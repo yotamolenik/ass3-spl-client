@@ -11,6 +11,9 @@ using std::string;
 
 ConnectionHandler::ConnectionHandler(string host, short port) : host_(host), port_(port), io_service_(),
                                                                 socket_(io_service_) {}
+//copy constructor
+ConnectionHandler::ConnectionHandler(const ConnectionHandler &other) : host_(other.host_), port_(other.port_), io_service_(), socket_(io_service_) {}
+
 
 ConnectionHandler::~ConnectionHandler() {
     close();
@@ -103,5 +106,7 @@ void ConnectionHandler::close() {
         std::cout << "closing failed: connection already closed" << std::endl;
     }
 }
+
+
 
 

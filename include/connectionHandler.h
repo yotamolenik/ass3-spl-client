@@ -2,8 +2,7 @@
 
 #ifndef CLIENT_CONNECTIONHANDLER_H
 #define CLIENT_CONNECTIONHANDLER_H
-//#ifndef CONNECTION_HANDLER__
-//#define CONNECTION_HANDLER__
+
 
 #include <string>
 #include <iostream>
@@ -21,6 +20,8 @@ private:
 public:
     ConnectionHandler(std::string host, short port);
     virtual ~ConnectionHandler();
+    //copy constructor(added by me)
+    ConnectionHandler(const ConnectionHandler& other);
 
     // Connect to the remote machine
     bool connect();
@@ -56,4 +57,3 @@ public:
 
 #endif
 
-#endif //CLIENT_CONNECTIONHANDLER_H
