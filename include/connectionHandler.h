@@ -38,7 +38,7 @@ public:
     // Returns false in case connection closed before a newline can be read.
     bool getLine(std::string& line);
 
-    // Send an ascii line from the server
+    // Send an ascii line from to the server
     // Returns false in case connection closed before all the data is sent.
     bool sendLine(std::string& line);
 

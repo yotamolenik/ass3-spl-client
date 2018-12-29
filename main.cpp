@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include "include/connectionHandler.h"
-#include "src/ReciveMessages.h"
+#include "src/ReceiveMessages.h"
 #include <mutex>
 #include <thread>
 using namespace std;
@@ -18,9 +18,6 @@ using namespace std;
 
 
 int main(int argc, char *argv[]) {
-    //TODO: sendline and getline should become thread safe
-    //TODO: question: do we want a copy constructor for connectionHandler or do we want the smae one for both threads? and why?
-
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " host port" << std::endl << std::endl;
         return -1;
@@ -30,7 +27,8 @@ int main(int argc, char *argv[]) {
     std::mutex mutex;
     ConnectionHandler connectionHandler(host, port);
     // TODO: why is this working? i dont have a reference here but the constructor uses a reference
-    ReciveMessages reciveMessages(connectionHandler, mutex);
+    // answer here
+    ReceiveMessages receiveMessages(connectionHandler, mutex);
     if (!connectionHandler.connect()) {
         std::cerr << "Cannot connect to " << host << ":" << port << std::endl;
         return 1;
@@ -42,18 +40,18 @@ int main(int argc, char *argv[]) {
         std::cin.getline(buf, bufsize);
         std::string line(buf);
         int len = line.length();
-        //first receive message, then decode and process and then send a response
-        std::thread th1(&ReciveMessages::run, &reciveMessages);
+        //first receive message, then process according to the assignment, then send the result
 
-        //we dont want to just send back what we got so lets do some magic
+        std::thread th1(&ReceiveMessages::run, &receiveMessages);
+        th1.join();
 
+
+        //send to the server the command from the keyboard
         if (!connectionHandler.sendLine(line)) {
             std::cout << "Disconnected. Exiting...\n" << std::endl;
             break;
         }
-        //t connectionHandler.sendLine(line) appends '\n' to the message. Therefor we send len+1 bytes.
-        std::cout << "Sent " << len + 1 << " bytes to server" << std::endl;
-
+        //t connectionHandler.sendLine(line) appends '\0' to the message. Therefor we send len+1 bytes.
 
         //t We can use one of three options to read data from the server:
         //t 1. Read a fixed number of characters
@@ -68,13 +66,3 @@ int main(int argc, char *argv[]) {
 
 
 
-/*
-            //t A C string must end with a 0 char delimiter.  When we filled the answer buffer from the socket
-            //t we filled up to the \n char - we must make sure now that a 0 char is also present. So we truncate last character.
-            answer.resize(len - 1);
-            if (answer == "bye") {
-                std::cout << "Exiting...\n" << std::endl;
-                interrupted = true;
-                break;
-            }
-            */

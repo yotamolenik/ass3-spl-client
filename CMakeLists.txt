@@ -8,4 +8,4 @@ find_package(Boost COMPONENTS
 include_directories($
         Boost_INCLUDE_DIRS)
 
-add_executable(Client main.cpp src/connectionHandler.cpp include/connectionHandler.h src/ReciveMessages.cpp src/ReciveMessages.h)
+add_executable(Client main.cpp src/connectionHandler.cpp include/connectionHandler.h src/ReceiveMessages.cpp src/ReceiveMessages.h)
