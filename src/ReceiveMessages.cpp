@@ -7,8 +7,10 @@ using namespace std;
 
 //t constructor locks the mutex while destructor (out of scope) unlocks it   //t std::lock_guard<std::mutex> lock(_mutex);
 
-ReceiveMessages::ReceiveMessages(ConnectionHandler &connectionHandler, std::mutex &mutex) : ch(
-        connectionHandler), _mutex(mutex) {terminate = false;}
+
+ReceiveMessages::ReceiveMessages(ConnectionHandler &connectionHandler, std::mutex &mutex) : ch(connectionHandler), _mutex(mutex) {
+    terminate = false;
+}
 
 void ReceiveMessages::run() {
     char answer [2];
@@ -94,6 +96,8 @@ short ReceiveMessages::bytesToShort(char *bytesArr) {
     result += (short)(bytesArr[1] & 0xff);
     return result;
 }
+
+
 
 
 

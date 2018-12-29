@@ -2,8 +2,12 @@
 #include <stdlib.h>
 #include "include/connectionHandler.h"
 #include "src/ReceiveMessages.h"
+#include "include/Message.h"
 #include <mutex>
 #include <thread>
+
+void shortToBytes(short opcode, int i);
+
 using namespace std;
 //TODO: fix the build, something with boost
 
@@ -26,13 +30,13 @@ int main(int argc, char *argv[]) {
     short port = atoi(argv[2]);
     std::mutex mutex;
     ConnectionHandler connectionHandler(host, port);
-    // TODO: why is this working? i dont have a reference here but the constructor uses a reference
-    // answer here
     ReceiveMessages receiveMessages(connectionHandler, mutex);
     if (!connectionHandler.connect()) {
         std::cerr << "Cannot connect to " << host << ":" << port << std::endl;
         return 1;
     }
+    std::thread th1(&ReceiveMessages::run, &receiveMessages);
+    th1.join();
 
     while (1) {
         const short bufsize = 1024;
@@ -40,11 +44,40 @@ int main(int argc, char *argv[]) {
         std::cin.getline(buf, bufsize);
         std::string line(buf);
         int len = line.length();
-        //first receive message, then process according to the assignment, then send the result
+        //first receive message, then parse according to the assignment, then send the result
+        //parse the command from the keyboard
+        std::string firstWord = line.substr(0, line.find(' '));
+        if (firstWord == "REGISTER"){
+            short opcode = 1;
+            char bytes[2];
+            shortToBytes(opcode,*bytes);
+            string afterFirstSpace = line.substr(line.find(' '));
+            string username = afterFirstSpace.substr(0,afterFirstSpace.find(' '));
+            string password = afterFirstSpace.substr(afterFirstSpace.find(' '));
+            string toSend = std::to_string(opcode) + username + "\0" + password + "\0";
+            connectionHandler.sendLine(toSend);
+        }
+        if (firstWord == "LOGIN"){
 
-        std::thread th1(&ReceiveMessages::run, &receiveMessages);
-        th1.join();
+        }
+        if (firstWord == "LOGOUT"){
 
+        }
+        if (firstWord == "FOLLOW"){
+
+        }
+        if (firstWord == "POST"){
+
+        }
+        if (firstWord == "PM"){
+
+        }
+        if (firstWord == "USERLIST"){
+
+        }
+        if (firstWord == "STAT"){
+
+        }
 
         //send to the server the command from the keyboard
         if (!connectionHandler.sendLine(line)) {
@@ -62,6 +95,16 @@ int main(int argc, char *argv[]) {
         //t We could also use: connectionHandler.getline(answer) and then get the answer without the newline char at the end
     }
     return 0;
+}
+
+void shortToBytes(short opcode, int i) {
+
+}
+
+void shortToBytes(short num, char* bytesArr)
+{
+    bytesArr[0] = ((num >> 8) & 0xFF);
+    bytesArr[1] = (num & 0xFF);
 }
 
 

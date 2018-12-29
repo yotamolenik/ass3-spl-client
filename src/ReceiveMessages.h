@@ -8,7 +8,7 @@
 
 class ReceiveMessages {
 private:
-    ConnectionHandler ch;
+    ConnectionHandler &ch;
     std::mutex &_mutex;
 public:
     ReceiveMessages(ConnectionHandler &connectionHandler, std::mutex &mutex);

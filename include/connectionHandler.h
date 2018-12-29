@@ -20,8 +20,6 @@ private:
 public:
     ConnectionHandler(std::string host, short port);
     virtual ~ConnectionHandler();
-    //copy constructor(added by me)
-    ConnectionHandler(const ConnectionHandler& other);
 
     // Connect to the remote machine
     bool connect();
@@ -38,7 +36,7 @@ public:
     // Returns false in case connection closed before a newline can be read.
     bool getLine(std::string& line);
 
-    // Send an ascii line from to the server
+    // Send an ascii line to the server
     // Returns false in case connection closed before all the data is sent.
     bool sendLine(std::string& line);
 

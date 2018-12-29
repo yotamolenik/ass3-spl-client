@@ -11,9 +11,6 @@ using std::string;
 
 ConnectionHandler::ConnectionHandler(string host, short port) : host_(host), port_(port), io_service_(),
                                                                 socket_(io_service_) {}
-//copy constructor
-ConnectionHandler::ConnectionHandler(const ConnectionHandler &other) : host_(other.host_), port_(other.port_), io_service_(), socket_(io_service_) {}
-
 
 ConnectionHandler::~ConnectionHandler() {
     close();
@@ -71,9 +68,9 @@ bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
 bool ConnectionHandler::getLine(std::string &line) {
     return getFrameAscii(line, '\0');
 }
-
+//we get lines with 0 but we want to send with \n
 bool ConnectionHandler::sendLine(std::string &line) {
-    return sendFrameAscii(line, '\0');
+    return sendFrameAscii(line, '\n');
 }
 
 bool ConnectionHandler::getFrameAscii(std::string &frame, char delimiter) {
