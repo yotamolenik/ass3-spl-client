@@ -4,6 +4,7 @@
 #include "src/ReceiveMessages.h"
 #include <mutex>
 #include <thread>
+#include <vector>
 
 using namespace std;
 //TODO: fix the build, something with boost
@@ -21,18 +22,16 @@ void shortToBytes(short num, char *bytesArr) {
     bytesArr[1] = (num & 0xFF);
 }
 
+
 string prepareLoginOrRegister(short op, string line, ConnectionHandler &connectionHandler) {
-    short opcode = op;
-    char bytes[2];
-    shortToBytes(opcode, bytes);
     string afterFirstSpace = line.substr(line.find(' '));
     string username = afterFirstSpace.substr(0, afterFirstSpace.find(' '));
     string password = afterFirstSpace.substr(afterFirstSpace.find(' '));
-    string toSend = std::to_string(bytes) + username + "\0" + password + "\0";
+    string toSend = std::to_string(op) + username + password;
     return toSend;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) { //opcode is a string for register and login. if its a problem we can do a vector magic trick
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " host port" << std::endl << std::endl;
         return -1;
@@ -51,25 +50,33 @@ int main(int argc, char *argv[]) {
     std::thread th1(&ReceiveMessages::run, &receiveMessages);
     th1.join();
 
-    while (terminate.load()) {// after th1 is constructed it is joinable. after destruction, not anymore
+    while (terminate.load()) {
         const short bufsize = 1024;
         char buf[bufsize];
         std::cin.getline(buf, bufsize);
         std::string line(buf);
-        int len = line.length();
+        int len = (int)line.length();
         //first receive message, then parse according to the assignment, then send the result
         std::string firstWord = line.substr(0, line.find(' '));
         if (firstWord == "REGISTER") {
-            string tosend = prepareLoginOrRegister(1, line, connectionHandler);
-            if (!connectionHandler.sendLine(tosend)) { //after logoutACK the socket is closed so sendline will fail
+            string prepare = prepareLoginOrRegister(1, line, connectionHandler);
+            char * tosend;
+            for (int i = 0; i < prepare.size(); ++i) {
+                tosend[i] = prepare[i];
+            }
+            if (!connectionHandler.sendBytes(tosend,(int)prepare.size())) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
 
         }
         if (firstWord == "LOGIN") {
-            string tosend = prepareLoginOrRegister(2, line, connectionHandler);
-            if (!connectionHandler.sendLine(tosend)) { //after logoutACK the socket is closed so sendline will fail
+            string prepare = prepareLoginOrRegister(2, line, connectionHandler);
+            char * tosend;
+            for (int i = 0; i < prepare.size(); ++i) {
+                tosend[i] = prepare[i];
+            }
+            if (!connectionHandler.sendBytes(tosend,(int)prepare.size())) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
@@ -79,7 +86,7 @@ int main(int argc, char *argv[]) {
             short opcode = 3;
             char bytes[2];
             shortToBytes(opcode, bytes);
-            if (!connectionHandler.sendBytes(bytes)) { //after logoutACK the socket is closed so sendline will fail
+            if (!connectionHandler.sendBytes(bytes,2)) {
                 std::cout << "already logged out\n" << std::endl;
                 break;
             }
@@ -88,21 +95,29 @@ int main(int argc, char *argv[]) {
         if (firstWord == "FOLLOW") {
             int foun = std::stoi(line.substr(0,1));
             int numOfUsers = std::stoi(line.substr(1,2));
-            for (int i = 0; i < line.size(); i++){
-                if(line[i] == ' ')
-                  line[i] = '\0';
+            for (char &i : line) {
+                if(i == ' ')
+                    i = '\0';
             }
-            short opcode = 4;
-            char bytes[2];
-            shortToBytes(opcode, bytes);
-
-            if (!connectionHandler.sendLine(line)) { //after logoutACK the socket is closed so sendline will fail
+            //shortToBytes(opcode, bytes);?
+            line.insert(0, std::to_string(foun));
+            line.insert(0, std::to_string(numOfUsers));
+            if (!connectionHandler.sendLine(line)) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
         }
         if (firstWord == "POST") {
-
+            line.insert(0,"05");
+            line.append("\0");
+            char * tosend;
+            for (int i = 0; i < line.size(); ++i) {
+                tosend[i] = line[i];
+            }
+            if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
         }
         if (firstWord == "PM") {
 
@@ -118,7 +133,13 @@ int main(int argc, char *argv[]) {
 }
 
 
-
+//std::vector<char> mergeArrIntoVector(string op, string username, string password){
+//    vector<char> merged;
+//    merged.emplace_back(op);
+//    merged.emplace_back(username);
+//    merged.emplace_back(password);
+//    return merged;
+//}
 
 //t connectionHandler.sendLine(line) appends '\0' to the message. Therefor we send len+1 bytes.
 
