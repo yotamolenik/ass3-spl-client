@@ -28,6 +28,7 @@ bool ConnectionHandler::connect() {
     }
     catch (std::exception &e) {
         std::cerr << "Connection failed (Error: " << e.what() << ')' << std::endl;
+        socket_.
         return false;
     }
     return true;

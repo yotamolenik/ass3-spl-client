@@ -7,18 +7,20 @@ using namespace std;
 
 //t constructor locks the mutex while destructor (out of scope) unlocks it   //t std::lock_guard<std::mutex> lock(_mutex);
 
+ReceiveMessages::ReceiveMessages(ConnectionHandler &connectionHandler, std::mutex &mutex,
+                                 std::atomic<bool> &terminate) : ch(connectionHandler), _mutex(mutex), _terminate(terminate) {
 
-ReceiveMessages::ReceiveMessages(ConnectionHandler &connectionHandler, std::mutex &mutex) : ch(connectionHandler), _mutex(mutex) {
-    terminate = false;
 }
 
 void ReceiveMessages::run() {
     char answer [2];
-    while (!terminate) {
+    while (_terminate.load()) {
         ch.getBytes(answer , 2);
         process(answer);
     }
 }
+
+
 
 void ReceiveMessages::process(char *ans){
     int opCode = bytesToShort(ans);
@@ -49,7 +51,8 @@ void ReceiveMessages::process(char *ans){
             int MessageOP = bytesToShort(MessageOpCode);
             switch (MessageOP) {
                 case 3: {
-                    terminate = true;
+                    ch.close();
+                    _terminate.store(false);
                 }
                 case 4: {
                     char NumOfUsers [2];
@@ -59,7 +62,7 @@ void ReceiveMessages::process(char *ans){
                     for(unsigned int i = 0 ; i < NumUsers ; i++ ){
                         string userName;
                         ch.getLine(userName);
-                        UserNameList = UserNameList + userName +" "<< endl;
+                        UserNameList = UserNameList + userName +" ";
 
                     }
                     cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumOfUsers + " " + UserNameList<< endl;
@@ -96,6 +99,8 @@ short ReceiveMessages::bytesToShort(char *bytesArr) {
     result += (short)(bytesArr[1] & 0xff);
     return result;
 }
+
+
 
 
 
