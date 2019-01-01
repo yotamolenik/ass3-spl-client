@@ -23,7 +23,7 @@ void shortToBytes(short num, char *bytesArr) {
 }
 
 
-string prepareLoginOrRegister(short op, string line, ConnectionHandler &connectionHandler) {
+string prepareLoginOrRegister(short op, const string &line, ConnectionHandler &connectionHandler) {
     string afterFirstSpace = line.substr(line.find(' '));
     string username = afterFirstSpace.substr(0, afterFirstSpace.find(' '));
     string password = afterFirstSpace.substr(afterFirstSpace.find(' '));
@@ -31,7 +31,7 @@ string prepareLoginOrRegister(short op, string line, ConnectionHandler &connecti
     return toSend;
 }
 
-int main(int argc, char *argv[]) { //opcode is a string for register and login. if its a problem we can do a vector magic trick
+int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a problem we can do a vector magic trick
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " host port" << std::endl << std::endl;
         return -1;
@@ -48,14 +48,13 @@ int main(int argc, char *argv[]) { //opcode is a string for register and login. 
         return 1;
     }
     std::thread th1(&ReceiveMessages::run, &receiveMessages);
-    th1.join();
 
     while (terminate.load()) {
         const short bufsize = 1024;
         char buf[bufsize];
         std::cin.getline(buf, bufsize);
         std::string line(buf);
-        int len = (int)line.length();
+        //int len = (int)line.length(); that line was here but im not sure why
         //first receive message, then parse according to the assignment, then send the result
         std::string firstWord = line.substr(0, line.find(' '));
         if (firstWord == "REGISTER") {
@@ -90,7 +89,7 @@ int main(int argc, char *argv[]) { //opcode is a string for register and login. 
                 std::cout << "already logged out\n" << std::endl;
                 break;
             }
-            connectionHandler.sendBytes(bytes, 2);
+            break;
         }
         if (firstWord == "FOLLOW") {
             int foun = std::stoi(line.substr(0,1));
@@ -120,15 +119,41 @@ int main(int argc, char *argv[]) { //opcode is a string for register and login. 
             }
         }
         if (firstWord == "PM") {
-
+            line.insert(0,"06");
+            line[line.find(' ')] = '\0';
+            line.append("\0");
+            char * tosend;
+            for (int i = 0; i < line.size(); ++i) {
+                tosend[i] = line[i];
+            }
+            if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
         }
         if (firstWord == "USERLIST") {
-
+            short op = 07;
+            char opcode[2];
+            shortToBytes(op,opcode);
+            if (!connectionHandler.sendBytes(opcode,2)) {
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
         }
         if (firstWord == "STAT") {
-
+            line.insert(0,"08");
+            line.append("\0");
+            char * tosend;
+            for (int i = 0; i < line.size(); ++i) {
+                tosend[i] = line[i];
+            }
+            if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
         }
     }
+    th1.join();
     return 0;
 }
 

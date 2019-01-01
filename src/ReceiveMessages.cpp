@@ -62,7 +62,7 @@ void ReceiveMessages::process(char *ans){
                     for(unsigned int i = 0 ; i < NumUsers ; i++ ){
                         string userName;
                         ch.getLine(userName);
-                        UserNameList = UserNameList + userName +" ";
+                        UserNameList.append(userName +" ");
 
                     }
                     cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumOfUsers + " " + UserNameList<< endl;
@@ -89,7 +89,7 @@ void ReceiveMessages::process(char *ans){
             char MessageOpCode[2];
             ch.getBytes(MessageOpCode, 2);
             int MessageOP = bytesToShort(MessageOpCode);
-            cout<< "Error " + std::to_string(MessageOP) << endl;
+            cout<< "ERROR " + std::to_string(MessageOP) << endl;
         }
     }
 }
