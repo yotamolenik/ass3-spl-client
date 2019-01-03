@@ -7,7 +7,6 @@
 #include <vector>
 
 using namespace std;
-//TODO: fix the build, something with boost
 
 // is for my comments
 //t is for the original comments
@@ -23,15 +22,18 @@ void shortToBytes(short num, char *bytesArr) {
 }
 
 
-string prepareLoginOrRegister(short op, const string &line, ConnectionHandler &connectionHandler) {
-    string afterFirstSpace = line.substr(line.find(' '));
-    string username = afterFirstSpace.substr(0, afterFirstSpace.find(' '));
-    string password = afterFirstSpace.substr(afterFirstSpace.find(' '));
-    string toSend = std::to_string(op) + username + password;
+string prepareLoginOrRegister(short op, string &line, ConnectionHandler &connectionHandler) {
+    line[line.find(' ')] = '\0';
+    char toSend[2];
+    shortToBytes(op,toSend);
+    for (int i = 0; i < line.size(); ++i) {
+        toSend[i+2] = line[i];
+    }
+    toSend[line.size() + 3] = '\0';
     return toSend;
 }
 
-int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a problem we can do a vector magic trick
+int main(int argc, char *argv[]) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " host port" << std::endl << std::endl;
         return -1;
@@ -41,7 +43,7 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
     std::mutex mutex;
     ConnectionHandler connectionHandler(host, port);
     std::atomic<bool> terminate{};
-    terminate.store(true);
+    terminate.store(false);
     ReceiveMessages receiveMessages(connectionHandler, mutex, terminate);
     if (!connectionHandler.connect()) {
         std::cerr << "Cannot connect to " << host << ":" << port << std::endl;
@@ -49,7 +51,7 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
     }
     std::thread th1(&ReceiveMessages::run, &receiveMessages);
 
-    while (terminate.load()) {
+    while (!terminate.load()) {
         const short bufsize = 1024;
         char buf[bufsize];
         std::cin.getline(buf, bufsize);
@@ -59,6 +61,7 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
         std::string firstWord = line.substr(0, line.find(' '));
         if (firstWord == "REGISTER") {
             string prepare = prepareLoginOrRegister(1, line, connectionHandler);
+            // convert the string back to an array because sendBytes is stupid
             char * tosend;
             for (int i = 0; i < prepare.size(); ++i) {
                 tosend[i] = prepare[i];
@@ -67,7 +70,6 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
-
         }
         if (firstWord == "LOGIN") {
             string prepare = prepareLoginOrRegister(2, line, connectionHandler);
@@ -82,36 +84,51 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
 
         }
         if (firstWord == "LOGOUT") {
-            short opcode = 3;
-            char bytes[2];
-            shortToBytes(opcode, bytes);
-            if (!connectionHandler.sendBytes(bytes,2)) {
+            short op = 3;
+            char opcode[2];
+            shortToBytes(op, opcode);
+            if (!connectionHandler.sendBytes(opcode,2)) {
                 std::cout << "already logged out\n" << std::endl;
                 break;
             }
             break;
         }
         if (firstWord == "FOLLOW") {
-            int foun = std::stoi(line.substr(0,1));
-            int numOfUsers = std::stoi(line.substr(1,2));
-            for (char &i : line) {
-                if(i == ' ')
-                    i = '\0';
+            int foun = std::stoi(line.substr(8,9));
+            short numOfUsers = (short)std::stoi(line.substr(11,12));
+            for (char &c : line) {
+                if(c == ' ')
+                    c = '\0';
             }
-            //shortToBytes(opcode, bytes);?
-            line.insert(0, std::to_string(foun));
-            line.insert(0, std::to_string(numOfUsers));
-            if (!connectionHandler.sendLine(line)) {
+            short op = 4;
+            char opcode[2];
+            shortToBytes(op,opcode);
+            char * tosend;
+            tosend[0] = opcode[0];
+            tosend[1] = opcode[1];
+            tosend[2] = (char)foun;
+            char numberOfUsers[2];
+            shortToBytes(numOfUsers,numberOfUsers);
+            tosend[3] = numberOfUsers[0];
+            tosend[4] = numberOfUsers[1];
+            for (int i = 0; i < line.size(); ++i) {
+                tosend[i+5] = line[i];
+            }
+            if (!connectionHandler.sendBytes(tosend,(int)line.size() + 5)) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
         }
         if (firstWord == "POST") {
-            line.insert(0,"05");
             line.append("\0");
+            short op = 5;
+            char opcode[2];
+            shortToBytes(op,opcode);
             char * tosend;
+            tosend[0] = opcode[0];
+            tosend[1] = opcode[1];
             for (int i = 0; i < line.size(); ++i) {
-                tosend[i] = line[i];
+                tosend[i+2] = line[i];
             }
             if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
@@ -119,12 +136,14 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
             }
         }
         if (firstWord == "PM") {
-            line.insert(0,"06");
+            short op = 6;
+            char opcode[2];
+            shortToBytes(op,opcode);
             line[line.find(' ')] = '\0';
             line.append("\0");
             char * tosend;
             for (int i = 0; i < line.size(); ++i) {
-                tosend[i] = line[i];
+                tosend[i+2] = line[i];
             }
             if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
@@ -132,7 +151,7 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
             }
         }
         if (firstWord == "USERLIST") {
-            short op = 07;
+            short op = 7;
             char opcode[2];
             shortToBytes(op,opcode);
             if (!connectionHandler.sendBytes(opcode,2)) {
@@ -141,9 +160,13 @@ int main(int argc, char *argv[]) { //opcode is a string in many cases. if its a 
             }
         }
         if (firstWord == "STAT") {
-            line.insert(0,"08");
             line.append("\0");
+            short op = 8;
+            char opcode[2];
+            shortToBytes(op,opcode);
             char * tosend;
+            tosend[0] = opcode[0];
+            tosend[1] = opcode[1];
             for (int i = 0; i < line.size(); ++i) {
                 tosend[i] = line[i];
             }

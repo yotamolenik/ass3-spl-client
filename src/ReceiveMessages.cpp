@@ -14,7 +14,7 @@ ReceiveMessages::ReceiveMessages(ConnectionHandler &connectionHandler, std::mute
 
 void ReceiveMessages::run() {
     char answer [2];
-    while (_terminate.load()) {
+    while (!_terminate.load()) {
         ch.getBytes(answer , 2);
         process(answer);
     }
@@ -52,7 +52,8 @@ void ReceiveMessages::process(char *ans){
             switch (MessageOP) {
                 case 3: {
                     ch.close();
-                    _terminate.store(false);
+                    _terminate.store(true);
+                    break;
                 }
                 case 4: {
                     char NumOfUsers [2];
@@ -63,9 +64,10 @@ void ReceiveMessages::process(char *ans){
                         string userName;
                         ch.getLine(userName);
                         UserNameList.append(userName +" ");
-
+                        break;
                     }
                     cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumOfUsers + " " + UserNameList<< endl;
+                    break;
                 }
                 case 7 : {
                     string Users;
@@ -73,6 +75,7 @@ void ReceiveMessages::process(char *ans){
                     string NumOfUsers = Users.substr(0, 2);
                     string UserNameList = Users.substr(2);
                     cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumOfUsers + " " + UserNameList<< endl;
+                    break;
                 }
                 case 8 : {
                     string User;
@@ -82,7 +85,9 @@ void ReceiveMessages::process(char *ans){
                     string NumFollowing = User.substr(4);
                     cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumPosts + " " + NumFollowers + " " +
                             NumFollowing << endl;
+                    break;
                 }
+                default:break;
             }
         }
         case 11 : {
@@ -91,6 +96,7 @@ void ReceiveMessages::process(char *ans){
             int MessageOP = bytesToShort(MessageOpCode);
             cout<< "ERROR " + std::to_string(MessageOP) << endl;
         }
+        default:break;
     }
 }
 
