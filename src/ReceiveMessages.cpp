@@ -22,24 +22,25 @@ void ReceiveMessages::run() {
 
 
 
-void ReceiveMessages::process(char *ans){
-    int opCode = bytesToShort(ans);
+void ReceiveMessages::process(char* ans){
+    short opCode = bytesToShort(ans);
     switch (opCode) {
         case 9 : {
             string opCodeString = "NOTIFICATION ";
             char NotificationType[1];
             ch.getBytes(NotificationType, 1);
-            int numOfNotification = bytesToShort(NotificationType);
+            short Notification_Type = bytesToShort(NotificationType);
             string NotificationToPrint;
-            if (numOfNotification == 0)
+            if (Notification_Type == (short)0){
                 NotificationToPrint = "PM";
-            else NotificationToPrint = "Public";
+            }
+            else {NotificationToPrint = "Public";}
             string PostingUser;
             ch.getLine(PostingUser);
-            PostingUser = PostingUser.substr(3);// delete the opCode and NotificationType
+            PostingUser.resize(PostingUser.length() - 1);
             string content;
             ch.getLine(content);
-
+            content.resize(content.length() - 1);
             cout << opCodeString + " " + NotificationToPrint + " " + PostingUser + " " + content<< endl;
             break;
         }
@@ -48,47 +49,60 @@ void ReceiveMessages::process(char *ans){
             string opCodeString = "ACK";
             char MessageOpCode[2];
             ch.getBytes(MessageOpCode, 2);
-            int MessageOP = bytesToShort(MessageOpCode);
+            short MessageOP = bytesToShort(MessageOpCode);
+            string toprint = opCodeString + " " + std::to_string(MessageOP);
             switch (MessageOP) {
                 case 3: {
                     ch.close();
                     _terminate.store(true);
+                    cout << opCodeString + " " + std::to_string(MessageOP);
                     break;
                 }
                 case 4: {
                     char NumOfUsers [2];
                     ch.getBytes(NumOfUsers , 2);
                     int NumUsers = bytesToShort(NumOfUsers);
-                    string UserNameList;
+                    toprint += " " + to_string(NumUsers);
                     for(unsigned int i = 0 ; i < NumUsers ; i++ ){
                         string userName;
                         ch.getLine(userName);
-                        UserNameList.append(userName +" ");
-                        break;
+                        userName.resize(userName.length() - 1);
+                        toprint += " " + userName;
                     }
-                    cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumOfUsers + " " + UserNameList<< endl;
                     break;
                 }
                 case 7 : {
-                    string Users;
-                    ch.getLine(Users);
-                    string NumOfUsers = Users.substr(0, 2);
-                    string UserNameList = Users.substr(2);
-                    cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumOfUsers + " " + UserNameList<< endl;
+                    char NumOfUsers [2];
+                    ch.getBytes(NumOfUsers , 2);
+                    short NumUsers = bytesToShort(NumOfUsers);
+                    toprint += " " + to_string(NumUsers);
+                    for(unsigned int i = 0 ; i < NumUsers ; i++ ){
+                        string userName;
+                        ch.getLine(userName);
+                        userName.resize(userName.length() - 1);
+                        toprint += " " + userName;
+                    }
                     break;
                 }
                 case 8 : {
-                    string User;
-                    ch.getLine(User);
-                    string NumPosts = User.substr(0, 2);
-                    string NumFollowers = User.substr(2, 4);
-                    string NumFollowing = User.substr(4);
-                    cout << opCodeString + " " + std::to_string(MessageOP) + " " + NumPosts + " " + NumFollowers + " " +
-                            NumFollowing << endl;
+                    char NumPosts[2];
+                    ch.getBytes(NumPosts, 2);
+                    short Num_posts = bytesToShort(NumPosts);
+                    char Numfollowers[2];
+                    ch.getBytes(Numfollowers, 2);
+                    short Num_followers = bytesToShort(Numfollowers);
+                    char NumFollowing[2];
+                    ch.getBytes(NumFollowing, 2);
+                    short Num_following = bytesToShort(NumFollowing);
+
+                    toprint = opCodeString + " " + std::to_string(MessageOP) + " " +to_string(Num_posts)+ " " + to_string(Num_followers)
+                            + " " + to_string(Num_following);
                     break;
                 }
                 default:break;
             }
+            cout << toprint<< endl;
+            break;
         }
         case 11 : {
             char MessageOpCode[2];

@@ -70,7 +70,7 @@ bool ConnectionHandler::getLine(std::string &line) {
 }
 //we get lines with 0 but we want to send with \n
 bool ConnectionHandler::sendLine(std::string &line) {
-    return sendFrameAscii(line, '\n');
+    return sendFrameAscii(line, '\0');
 }
 
 bool ConnectionHandler::getFrameAscii(std::string &frame, char delimiter) {

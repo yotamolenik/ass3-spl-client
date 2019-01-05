@@ -14,7 +14,7 @@ private:
 public:
     ReceiveMessages(ConnectionHandler &connectionHandler, std::mutex &mutex, std::atomic<bool> &terminate);
     void run();
-    void process(char *ans);
+    void process(char* ans );
     short bytesToShort(char* bytesArr);
 
 };

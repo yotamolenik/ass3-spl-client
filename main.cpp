@@ -22,16 +22,6 @@ void shortToBytes(short num, char *bytesArr) {
 }
 
 
-string prepareLoginOrRegister(short op, string &line, ConnectionHandler &connectionHandler) {
-    line[line.find(' ')] = '\0';
-    char toSend[2];
-    shortToBytes(op,toSend);
-    for (int i = 0; i < line.size(); ++i) {
-        toSend[i+2] = line[i];
-    }
-    toSend[line.size() + 3] = '\0';
-    return toSend;
-}
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
@@ -52,32 +42,48 @@ int main(int argc, char *argv[]) {
     std::thread th1(&ReceiveMessages::run, &receiveMessages);
 
     while (!terminate.load()) {
-        const short bufsize = 1024;
-        char buf[bufsize];
-        std::cin.getline(buf, bufsize);
-        std::string line(buf);
-        //int len = (int)line.length(); that line was here but im not sure why
-        //first receive message, then parse according to the assignment, then send the result
-        std::string firstWord = line.substr(0, line.find(' '));
+
+        std::string line;
+        std::string firstWord;
+        getline(std::cin, line);
+        std::istringstream str(line);
+        str >> firstWord;
+
         if (firstWord == "REGISTER") {
-            string prepare = prepareLoginOrRegister(1, line, connectionHandler);
-            // convert the string back to an array because sendBytes is stupid
-            char * tosend;
-            for (int i = 0; i < prepare.size(); ++i) {
-                tosend[i] = prepare[i];
-            }
-            if (!connectionHandler.sendBytes(tosend,(int)prepare.size())) {
+
+            char opCode[2];
+            shortToBytes((short) 1, opCode);
+            if(!connectionHandler.sendBytes(opCode, 2)){
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
+            str >> firstWord;
+            if(!connectionHandler.sendLine(firstWord)){
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
+            str >> firstWord;
+            if(!connectionHandler.sendLine(firstWord)){
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
+
         }
         if (firstWord == "LOGIN") {
-            string prepare = prepareLoginOrRegister(2, line, connectionHandler);
-            char * tosend;
-            for (int i = 0; i < prepare.size(); ++i) {
-                tosend[i] = prepare[i];
+
+            char opCode[2];
+            shortToBytes((short) 2, opCode);
+            if(!connectionHandler.sendBytes(opCode, 2)){
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
             }
-            if (!connectionHandler.sendBytes(tosend,(int)prepare.size())) {
+            str >> firstWord;
+            if(!connectionHandler.sendLine(firstWord)){
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
+            str >> firstWord;
+            if(!connectionHandler.sendLine(firstWord)){
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
@@ -87,65 +93,80 @@ int main(int argc, char *argv[]) {
             short op = 3;
             char opcode[2];
             shortToBytes(op, opcode);
-            if (!connectionHandler.sendBytes(opcode,2)) {
+            if (!connectionHandler.sendBytes(opcode, 2)) {
                 std::cout << "already logged out\n" << std::endl;
                 break;
             }
-            break;
+            //break;
         }
         if (firstWord == "FOLLOW") {
-            int foun = std::stoi(line.substr(8,9));
-            short numOfUsers = (short)std::stoi(line.substr(11,12));
-            for (char &c : line) {
-                if(c == ' ')
-                    c = '\0';
-            }
+            short followUnfollow;
+            char follow_unfollow[2];
+            short numOfUsers;
+            std::string nextUser;
+            char numberOfUsers[2];
             short op = 4;
             char opcode[2];
-            shortToBytes(op,opcode);
-            char * tosend;
-            tosend[0] = opcode[0];
-            tosend[1] = opcode[1];
-            tosend[2] = (char)foun;
-            char numberOfUsers[2];
-            shortToBytes(numOfUsers,numberOfUsers);
-            tosend[3] = numberOfUsers[0];
-            tosend[4] = numberOfUsers[1];
-            for (int i = 0; i < line.size(); ++i) {
-                tosend[i+5] = line[i];
-            }
-            if (!connectionHandler.sendBytes(tosend,(int)line.size() + 5)) {
+            shortToBytes(op, opcode);
+            if(!connectionHandler.sendBytes(opcode, 2)){
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
+            str >> followUnfollow;
+            shortToBytes(followUnfollow,follow_unfollow);
+            char fff[1];
+            fff[0] = follow_unfollow[1];
+            if(!connectionHandler.sendBytes(fff, 1)){
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
+            str >> numOfUsers;
+            shortToBytes(numOfUsers, numberOfUsers);
+
+            if (!connectionHandler.sendBytes(numberOfUsers,2)) {
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
+
+            while (str.good() && str >> nextUser ){
+                if(!connectionHandler.sendLine(nextUser)){
+                    std::cout << "Disconnected. Exiting...\n" << std::endl;
+                    break;
+                }
+            }
         }
         if (firstWord == "POST") {
-            line.append("\0");
             short op = 5;
             char opcode[2];
-            shortToBytes(op,opcode);
-            char * tosend;
-            tosend[0] = opcode[0];
-            tosend[1] = opcode[1];
-            for (int i = 0; i < line.size(); ++i) {
-                tosend[i+2] = line[i];
+            shortToBytes(op, opcode);
+            std::string tosend = line.substr(5);
+
+            if(!connectionHandler.sendBytes(opcode, 2)){
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
             }
-            if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
+
+            if (!connectionHandler.sendLine(tosend)) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
         }
         if (firstWord == "PM") {
+           std::string userName;
             short op = 6;
             char opcode[2];
-            shortToBytes(op,opcode);
-            line[line.find(' ')] = '\0';
-            line.append("\0");
-            char * tosend;
-            for (int i = 0; i < line.size(); ++i) {
-                tosend[i+2] = line[i];
+            shortToBytes(op, opcode);
+            if(!connectionHandler.sendBytes(opcode, 2)){
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
             }
-            if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
+            str >> userName;
+            if (!connectionHandler.sendLine(userName)) {
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
+                std::string content = line.substr(userName.length() + 4);
+            if (!connectionHandler.sendLine(content)) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
@@ -153,27 +174,29 @@ int main(int argc, char *argv[]) {
         if (firstWord == "USERLIST") {
             short op = 7;
             char opcode[2];
-            shortToBytes(op,opcode);
-            if (!connectionHandler.sendBytes(opcode,2)) {
+            shortToBytes(op, opcode);
+            if (!connectionHandler.sendBytes(opcode, 2)) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
         }
         if (firstWord == "STAT") {
-            line.append("\0");
+
             short op = 8;
             char opcode[2];
-            shortToBytes(op,opcode);
-            char * tosend;
-            tosend[0] = opcode[0];
-            tosend[1] = opcode[1];
-            for (int i = 0; i < line.size(); ++i) {
-                tosend[i] = line[i];
-            }
-            if (!connectionHandler.sendBytes(tosend,(int)line.size())) {
+            shortToBytes(op, opcode);
+            std::string userName;
+            str >> userName;
+
+            if (!connectionHandler.sendBytes(opcode, 2)) {
                 std::cout << "Disconnected. Exiting...\n" << std::endl;
                 break;
             }
+            if (!connectionHandler.sendLine(userName)) {
+                std::cout << "Disconnected. Exiting...\n" << std::endl;
+                break;
+            }
+
         }
     }
     th1.join();
